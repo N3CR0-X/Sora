@@ -15,12 +15,10 @@ jobs:
         run: |
           set -eu
           python3 - <<'PY'
-          import hashlib, io, pathlib, re, urllib.request, zipfile
-          url='https://tmpfiles.org/wtARbiKfdN51/sora.zip'
-          page=urllib.request.urlopen(url,timeout=30).read().decode()
-          match=re.search(r'class="download" href="([^"]+)"',page)
-          if not match: raise SystemExit('Link de download não encontrado')
-          data=urllib.request.urlopen(match.group(1),timeout=60).read()
+          import base64, hashlib, io, pathlib, zipfile
+          parts=sorted(pathlib.Path('.sora-partes').glob('*.txt'))
+          if len(parts)!=69: raise SystemExit(f'Número inesperado de partes: {len(parts)}')
+          data=base64.b64decode(''.join(p.read_text() for p in parts),validate=True)
           if hashlib.sha256(data).hexdigest()!='2b9b134513ecbe2a12f70b9671b66ea4c4f3a2d83cbad3f1d974c9e8827b16da': raise SystemExit('Integridade do pacote incorreta')
           with zipfile.ZipFile(io.BytesIO(data)) as z:
               for item in z.infolist():
@@ -32,7 +30,7 @@ jobs:
       - name: Subir site para a branch principal
         run: |
           set -eu
-          git rm .github/workflows/sora-instalar.yml
+          git rm -r .sora-partes
           git add .nojekyll index.html 404.html assets/
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
